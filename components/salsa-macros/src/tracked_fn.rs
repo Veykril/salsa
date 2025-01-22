@@ -109,7 +109,14 @@ impl Macro {
             FunctionType::SalsaStruct => false,
         };
 
-        let lru = Literal::usize_unsuffixed(self.args.lru.unwrap_or(0));
+        let (lru, lru_capacity) = match (&self.args.lru, self.args.lru_capacity) {
+            (None, None) => (format_ident!("NoLru"), 0),
+            (None, Some(cap)) => (format_ident!("AutomaticLru"), cap),
+            (Some(lru), None) => (lru.clone(), 0),
+            (Some(lru), Some(cap)) => (lru.clone(), cap),
+        };
+
+        let lru_capacity = Literal::usize_unsuffixed(lru_capacity);
 
         let return_ref: bool = self.args.return_ref.is_some();
 
@@ -132,6 +139,7 @@ impl Macro {
                 no_eq: #no_eq,
                 needs_interner: #needs_interner,
                 lru: #lru,
+                lru_capacity: #lru_capacity,
                 return_ref: #return_ref,
                 unused_names: [
                     #zalsa,

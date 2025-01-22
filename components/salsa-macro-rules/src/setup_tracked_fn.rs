@@ -49,8 +49,10 @@ macro_rules! setup_tracked_fn {
         // If true, the input needs an interner (because it has >1 argument).
         needs_interner: $needs_interner:tt,
 
-        // LRU capacity (a literal, maybe 0)
+        // Choice of LRU implementation
         lru: $lru:tt,
+        // LRU capacity (a literal, maybe 0)
+        lru_capacity: $lru_capacity:tt,
 
         // True if we `return_ref` flag was given to the function
         return_ref: $return_ref:tt,
@@ -156,6 +158,8 @@ macro_rules! setup_tracked_fn {
 
                 type Output<$db_lt> = $output_ty;
 
+                type Lru = $zalsa::lru::$lru;
+
                 const CYCLE_STRATEGY: $zalsa::CycleRecoveryStrategy = $zalsa::CycleRecoveryStrategy::$cycle_recovery_strategy;
 
                 fn should_backdate_value(
@@ -218,7 +222,11 @@ macro_rules! setup_tracked_fn {
                         first_index,
                         aux,
                     );
-                    fn_ingredient.set_capacity($lru);
+                    $zalsa::macro_if! {
+                        if0 $lru_capacity {} else {
+                            fn_ingredient.set_capacity($lru_capacity);
+                        }
+                    }
                     $zalsa::macro_if! {
                         if $needs_interner {
                             vec![
@@ -273,7 +281,7 @@ macro_rules! setup_tracked_fn {
                     }
                 }
 
-                $zalsa::macro_if! { if0 $lru { } else {
+                $zalsa::macro_if! { ifnolru $lru { } else {
                     #[allow(dead_code)]
                     fn set_lru_capacity(db: &dyn $Db, value: usize) {
                         $Configuration::fn_ingredient(db).set_capacity(value);

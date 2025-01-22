@@ -58,7 +58,8 @@ pub(crate) struct Options<A: AllowedOptions> {
     /// The `lru = <usize>` option is used to set the lru capacity for a tracked function.
     ///
     /// If this is `Some`, the value is the `<usize>`.
-    pub lru: Option<usize>,
+    pub lru_capacity: Option<usize>,
+    pub lru: Option<syn::Ident>,
 
     /// The `constructor = <ident>` option lets the user specify the name of
     /// the constructor of a salsa struct.
@@ -84,6 +85,7 @@ impl<A: AllowedOptions> Default for Options<A> {
             constructor_name: Default::default(),
             phantom: Default::default(),
             lru: Default::default(),
+            lru_capacity: Default::default(),
             singleton: Default::default(),
         }
     }
@@ -239,15 +241,31 @@ impl<A: AllowedOptions> syn::parse::Parse for Options<A> {
             } else if ident == "lru" {
                 if A::LRU {
                     let _eq = Equals::parse(input)?;
-                    let lit = syn::LitInt::parse(input)?;
-                    let value = lit.base10_parse::<usize>()?;
-                    if let Some(old) = std::mem::replace(&mut options.lru, Some(value)) {
+                    let ident = syn::Ident::parse(input)?;
+                    if let Some(old) = std::mem::replace(&mut options.lru, Some(ident)) {
                         return Err(syn::Error::new(old.span(), "option `lru` provided twice"));
                     }
                 } else {
                     return Err(syn::Error::new(
                         ident.span(),
                         "`lru` option not allowed here",
+                    ));
+                }
+            } else if ident == "lru_capacity" {
+                if A::LRU {
+                    let _eq = Equals::parse(input)?;
+                    let lit = syn::LitInt::parse(input)?;
+                    let value = lit.base10_parse::<usize>()?;
+                    if let Some(old) = std::mem::replace(&mut options.lru_capacity, Some(value)) {
+                        return Err(syn::Error::new(
+                            old.span(),
+                            "option `lru_capacity` provided twice",
+                        ));
+                    }
+                } else {
+                    return Err(syn::Error::new(
+                        ident.span(),
+                        "`lru_capacity` option not allowed here",
                     ));
                 }
             } else if ident == "constructor" {

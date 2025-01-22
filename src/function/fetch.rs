@@ -1,5 +1,8 @@
 use super::{memo::Memo, Configuration, IngredientImpl};
-use crate::{runtime::StampedValue, zalsa::ZalsaDatabase, AsDynDatabase as _, Id};
+use crate::{
+    function::lru::LruChoice as _, runtime::StampedValue, zalsa::ZalsaDatabase, AsDynDatabase as _,
+    Id,
+};
 
 impl<C> IngredientImpl<C>
 where
@@ -17,7 +20,7 @@ where
         } = memo.revisions.stamped_value(memo.value.as_ref().unwrap());
 
         if let Some(evicted) = self.lru.record_use(id) {
-            self.evict_value_from_memo_for(zalsa, evicted);
+            self.evict_value_from_memo_for(zalsa.memo_table_for(evicted));
         }
 
         zalsa_local.report_tracked_read(

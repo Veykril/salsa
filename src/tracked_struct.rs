@@ -621,7 +621,7 @@ where
         false
     }
 
-    fn reset_for_new_revision(&mut self) {}
+    fn reset_for_new_revision<'a>(&mut self, _: &'a dyn Fn(crate::Id) -> &'a MemoTable) {}
 }
 
 impl<C> std::fmt::Debug for IngredientImpl<C>

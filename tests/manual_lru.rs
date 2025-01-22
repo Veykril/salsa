@@ -36,7 +36,7 @@ struct MyInput {
     field: u32,
 }
 
-#[salsa::tracked(lru_capacity = 32)]
+#[salsa::tracked(lru = ManualLru, lru_capacity = 32)]
 fn get_hot_potato(db: &dyn LogDatabase, input: MyInput) -> Arc<HotPotato> {
     db.push_log(format!("get_hot_potato({:?})", input.field(db)));
     Arc::new(HotPotato::new(input.field(db)))
@@ -48,7 +48,7 @@ fn get_hot_potato2(db: &dyn LogDatabase, input: MyInput) -> u32 {
     get_hot_potato(db, input).0
 }
 
-#[salsa::tracked(lru_capacity = 32)]
+#[salsa::tracked(lru = ManualLru, lru_capacity = 32)]
 fn get_volatile(db: &dyn LogDatabase, _input: MyInput) -> usize {
     static COUNTER: AtomicUsize = AtomicUsize::new(0);
     db.report_untracked_read();
@@ -61,16 +61,18 @@ fn load_n_potatoes() -> usize {
 
 #[test]
 fn lru_works() {
-    let db = common::LoggerDatabase::default();
+    let mut db = common::LoggerDatabase::default();
     assert_eq!(load_n_potatoes(), 0);
 
     for i in 0..128u32 {
         let input = MyInput::new(&db, i);
         let p = get_hot_potato(&db, input);
-        assert_eq!(p.0, i);
-        assert!(load_n_potatoes() <= 32);
+        assert_eq!(p.0, i)
     }
 
+    assert_eq!(load_n_potatoes(), 128);
+    // Change the revision, and trigger the GC
+    db.synthetic_write(salsa::Durability::HIGH);
     assert_eq!(load_n_potatoes(), 32);
 }
 
@@ -94,7 +96,7 @@ fn lru_doesnt_break_volatile_queries() {
 
 #[test]
 fn lru_can_be_changed_at_runtime() {
-    let db = common::LoggerDatabase::default();
+    let mut db = common::LoggerDatabase::default();
     assert_eq!(load_n_potatoes(), 0);
 
     let inputs: Vec<(u32, MyInput)> = (0..128).map(|i| (i, MyInput::new(&db, i))).collect();
@@ -102,9 +104,11 @@ fn lru_can_be_changed_at_runtime() {
     for &(i, input) in inputs.iter() {
         let p = get_hot_potato(&db, input);
         assert_eq!(p.0, i);
-        assert!(load_n_potatoes() <= 32);
     }
 
+    assert_eq!(load_n_potatoes(), inputs.len());
+    // Change the revision, and trigger the GC
+    db.synthetic_write(salsa::Durability::HIGH);
     assert_eq!(load_n_potatoes(), 32);
 
     get_hot_potato::set_lru_capacity(&db, 64);
@@ -112,9 +116,11 @@ fn lru_can_be_changed_at_runtime() {
     for &(i, input) in inputs.iter() {
         let p = get_hot_potato(&db, input);
         assert_eq!(p.0, i);
-        assert!(load_n_potatoes() <= 64);
     }
 
+    assert_eq!(load_n_potatoes(), inputs.len());
+    // Change the revision, and trigger the GC
+    db.synthetic_write(salsa::Durability::HIGH);
     assert_eq!(load_n_potatoes(), 64);
 
     // Special case: setting capacity to zero disables LRU
@@ -123,10 +129,12 @@ fn lru_can_be_changed_at_runtime() {
     for &(i, input) in inputs.iter() {
         let p = get_hot_potato(&db, input);
         assert_eq!(p.0, i);
-        assert!(load_n_potatoes() >= 64);
     }
 
-    assert_eq!(load_n_potatoes(), 128);
+    assert_eq!(load_n_potatoes(), inputs.len());
+    // Change the revision, and trigger the GC
+    db.synthetic_write(salsa::Durability::HIGH);
+    assert_eq!(load_n_potatoes(), inputs.len());
 
     drop(db);
     assert_eq!(load_n_potatoes(), 0);
