@@ -14,7 +14,7 @@ use crate::durability::Durability;
 use crate::function::VerifyResult;
 use crate::hash::FxDashMap;
 use crate::ingredient::{fmt_index, Ingredient};
-use crate::plumbing::{IngredientIndices, Jar};
+use crate::plumbing::{IngredientIndices, Jar, MemoDropSender};
 use crate::revision::AtomicRevision;
 use crate::table::memo::{MemoTable, MemoTableTypes};
 use crate::table::sync::SyncTable;
@@ -117,6 +117,7 @@ impl<C: Configuration> Jar for JarImpl<C> {
         _zalsa: &Zalsa,
         first_index: IngredientIndex,
         _dependencies: IngredientIndices,
+        _: MemoDropSender,
     ) -> Vec<Box<dyn Ingredient>> {
         vec![Box::new(IngredientImpl::<C>::new(first_index)) as _]
     }

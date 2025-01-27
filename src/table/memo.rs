@@ -9,6 +9,7 @@ use std::{
     },
 };
 
+use crossbeam_utils::sync::Parker;
 use parking_lot::RwLock;
 use thin_vec::ThinVec;
 
@@ -25,6 +26,73 @@ pub(crate) struct MemoTable {
 pub trait Memo: Any + Send + Sync {
     /// Returns the `origin` of this memo
     fn origin(&self) -> &QueryOrigin;
+}
+
+/// An untyped memo that can only be dropped.
+pub struct MemoDrop(NonNull<DummyMemo>, unsafe fn(NonNull<DummyMemo>));
+
+/// SAFETY: `MemoDrop` is `Send` because only contains `Memo` types which are `Send`
+unsafe impl Send for MemoDrop {}
+
+impl MemoDrop {
+    pub fn new<M: Memo>(memo: NonNull<M>) -> Self {
+        Self(
+            MemoEntryType::to_dummy(memo),
+            // SAFETY: `M` is the same as used in `to_dummy`
+            |memo| unsafe { drop(Box::from_raw(MemoEntryType::from_dummy::<M>(memo).as_ptr())) },
+        )
+    }
+}
+
+impl Drop for MemoDrop {
+    fn drop(&mut self) {
+        // SAFETY: We only construct this type with a valid drop function pointer
+        unsafe { self.1(self.0) };
+    }
+}
+
+pub fn spawn_memo_drop_thread(receiver: MemoDropReceiver) -> std::thread::JoinHandle<()> {
+    std::thread::spawn(|| {
+        receiver.0.into_iter().for_each(|e| match e {
+            MemoDropAction::Drop(memo_drop) => drop(memo_drop),
+            // We were instructed to park the thread, this means we have dropped everything for the
+            // last revision.
+            MemoDropAction::Park(parker) => parker.park(),
+        });
+    })
+}
+
+pub fn memo_drop_channel() -> (MemoDropSender, MemoDropReceiver) {
+    let (tx, rx) = std::sync::mpsc::channel();
+    (MemoDropSender(tx), MemoDropReceiver(rx))
+}
+
+#[derive(Clone)]
+pub struct MemoDropSender(std::sync::mpsc::Sender<MemoDropAction>);
+
+impl MemoDropSender {
+    /// Put the memo into the drop queue.
+    pub(crate) fn delay<M: Memo>(&self, memo: NonNull<M>) {
+        self.0
+            .send(MemoDropAction::Drop(MemoDrop::new(memo)))
+            .unwrap();
+    }
+
+    /// Emit a park barrier for the receiver side instructing it to not drop any memos following the
+    /// barrier until the given parker is unparked.
+    pub(crate) fn park(&self, parker: Parker) {
+        self.0.send(MemoDropAction::Park(parker)).unwrap();
+    }
+}
+
+pub struct MemoDropReceiver(std::sync::mpsc::Receiver<MemoDropAction>);
+
+/// A drop action to be performed by the owner of the `MemoDropReceiver`.
+enum MemoDropAction {
+    /// Drop the contained memo.
+    Drop(MemoDrop),
+    /// Park the current thread on the given parker.
+    Park(Parker),
 }
 
 /// Data for a memoized entry.

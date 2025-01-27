@@ -298,7 +298,8 @@ impl Zalsa {
             }
             hash_map::Entry::Vacant(entry) => entry.insert(index),
         };
-        let ingredients = J::create_ingredients(self, index, dependencies);
+        let ingredients =
+            J::create_ingredients(self, index, dependencies, self.runtime.memo_drop_sender());
         for ingredient in ingredients {
             let expected_index = ingredient.ingredient_index();
 
@@ -366,6 +367,10 @@ impl Zalsa {
 
             ingredient.reset_for_new_revision(self.runtime.table_mut());
         }
+
+        // Call `memo_drop_barrier` after having called `reset_for_new_revision` on all ingredients
+        // so that we collect all LRU evictions that happened during the reset.
+        self.runtime.memo_drop_barrier();
 
         new_revision
     }

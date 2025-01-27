@@ -4,7 +4,7 @@ use std::mem::transmute;
 use codspeed_criterion_compat::{
     criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion,
 };
-use salsa::Setter;
+use salsa::{Database, Setter};
 
 include!("shims/global_alloc_overwrite.rs");
 
@@ -56,12 +56,15 @@ fn mutating_inputs(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("mutating", n), |b| {
             b.iter_batched_ref(
                 || {
-                    let db = salsa::DatabaseImpl::default();
+                    let mut db = salsa::DatabaseImpl::default();
                     let base_string = "hello, world!".to_owned();
                     let base_len = base_string.len();
 
                     let string = base_string.clone().repeat(*n);
                     let new_len = string.len();
+
+                    // spawn the LRU thread
+                    db.synthetic_write(salsa::Durability::HIGH);
 
                     let input = Input::new(black_box(&db), black_box(base_string.clone()));
                     let actual_len = length(&db, input);

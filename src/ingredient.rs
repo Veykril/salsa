@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::accumulator::accumulated_map::{AccumulatedMap, InputAccumulatedValues};
 use crate::cycle::{CycleHeadKind, CycleRecoveryStrategy};
 use crate::function::VerifyResult;
-use crate::plumbing::IngredientIndices;
+use crate::plumbing::{IngredientIndices, MemoDropSender};
 use crate::table::memo::MemoTableTypes;
 use crate::table::Table;
 use crate::zalsa::{transmute_data_mut_ptr, transmute_data_ptr, IngredientIndex, Zalsa};
@@ -33,6 +33,7 @@ pub trait Jar: Any {
         zalsa: &Zalsa,
         first_index: IngredientIndex,
         dependencies: IngredientIndices,
+        memo_drop_sender: MemoDropSender,
     ) -> Vec<Box<dyn Ingredient>>
     where
         Self: Sized;

@@ -14,7 +14,7 @@ use crate::id::{AsId, FromIdWithDb};
 use crate::ingredient::{fmt_index, Ingredient};
 use crate::input::singleton::{Singleton, SingletonChoice};
 use crate::key::DatabaseKeyIndex;
-use crate::plumbing::{Jar, Stamp};
+use crate::plumbing::{Jar, MemoDropSender, Stamp};
 use crate::table::memo::{MemoTable, MemoTableTypes};
 use crate::table::sync::SyncTable;
 use crate::table::{Slot, Table};
@@ -55,6 +55,7 @@ impl<C: Configuration> Jar for JarImpl<C> {
         _zalsa: &Zalsa,
         struct_index: crate::zalsa::IngredientIndex,
         _dependencies: crate::memo_ingredient_indices::IngredientIndices,
+        _: MemoDropSender,
     ) -> Vec<Box<dyn Ingredient>> {
         let struct_ingredient: IngredientImpl<C> = IngredientImpl::new(struct_index);
 

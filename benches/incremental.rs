@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use codspeed_criterion_compat::{criterion_group, criterion_main, BatchSize, Criterion};
-use salsa::Setter;
+use salsa::{Database, Setter};
 
 include!("shims/global_alloc_overwrite.rs");
 
@@ -32,7 +32,9 @@ fn many_tracked_structs(criterion: &mut Criterion) {
     criterion.bench_function("many_tracked_structs", |b| {
         b.iter_batched_ref(
             || {
-                let db = salsa::DatabaseImpl::new();
+                let mut db = salsa::DatabaseImpl::new();
+                // spawn the LRU thread
+                db.synthetic_write(salsa::Durability::HIGH);
 
                 let input = Input::new(black_box(&db), black_box(1_000));
                 let input2 = Input::new(black_box(&db), black_box(1));

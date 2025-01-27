@@ -28,15 +28,6 @@ impl<C: Configuration> IngredientImpl<C> {
 
     /// Convert from an internal memo (which uses `'static`) to one tied to self
     /// so it can be publicly released.
-    unsafe fn to_self<'db>(
-        &'db self,
-        memo: NonNull<Memo<C::Output<'static>>>,
-    ) -> NonNull<Memo<C::Output<'db>>> {
-        memo.cast()
-    }
-
-    /// Convert from an internal memo (which uses `'static`) to one tied to self
-    /// so it can be publicly released.
     unsafe fn to_self_ref<'db>(
         &'db self,
         memo: &'db Memo<C::Output<'static>>,
@@ -45,25 +36,23 @@ impl<C: Configuration> IngredientImpl<C> {
     }
 
     /// Inserts the memo for the given key; (atomically) overwrites and returns any previously existing memo
-    ///
-    /// # Safety
-    ///
-    /// The caller needs to make sure to not drop the returned value until no more references into
-    /// the database exist as there may be outstanding borrows into the `Arc` contents.
-    pub(super) unsafe fn insert_memo_into_table_for<'db>(
+    pub(super) fn insert_memo_into_table_for<'db>(
         &'db self,
         zalsa: &'db Zalsa,
         id: Id,
         memo: NonNull<Memo<C::Output<'db>>>,
         memo_ingredient_index: MemoIngredientIndex,
-    ) -> Option<NonNull<Memo<C::Output<'db>>>> {
+    ) {
         let static_memo = unsafe { self.to_static(memo) };
-        let old_static_memo = unsafe {
+        // SAFETY: We delay the deletion of the old memo until the next revision starts.
+        let old_memo = unsafe {
             zalsa
                 .memo_table_for(id)
                 .insert(memo_ingredient_index, static_memo)
-        }?;
-        Some(unsafe { self.to_self(old_static_memo) })
+        };
+        if let Some(old_memo) = old_memo {
+            self.delete.delay(old_memo);
+        }
     }
 
     /// Loads the current memo for `key_index`. This does not hold any sort of
