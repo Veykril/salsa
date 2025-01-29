@@ -1,14 +1,18 @@
-use std::{
-    mem,
-    sync::atomic::{AtomicBool, Ordering},
-    thread::ThreadId,
-};
+use std::mem;
 
 use parking_lot::Mutex;
 
 use crate::{
-    durability::Durability, key::DatabaseKeyIndex, revision::AtomicRevision, table::Table,
-    zalsa_local::ZalsaLocal, Cancelled, Database, Event, EventKind, Revision,
+    durability::Durability,
+    key::DatabaseKeyIndex,
+    revision::AtomicRevision,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        thread::ThreadId,
+    },
+    table::Table,
+    zalsa_local::ZalsaLocal,
+    Cancelled, Database, Event, EventKind, Revision,
 };
 
 use self::dependency_graph::DependencyGraph;
@@ -170,7 +174,7 @@ impl Runtime {
         query_mutex_guard: QueryMutexGuard,
     ) -> BlockResult {
         let mut dg = self.dependency_graph.lock();
-        let thread_id = std::thread::current().id();
+        let thread_id = crate::sync::thread::current().id();
 
         if dg.depends_on(other_id, thread_id) {
             return BlockResult::Cycle;

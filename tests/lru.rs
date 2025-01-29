@@ -1,7 +1,10 @@
 //! Test that a `tracked` fn with lru options
 //! compiles and executes successfully.
 
-use salsa::sync::{Arc, AtomicUsize, Ordering};
+use salsa::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 
 mod common;
 use common::LogDatabase;

@@ -60,8 +60,7 @@ fn query_c(db: &dyn KnobsDatabase) -> CycleValue {
     query_b(db)
 }
 
-#[test]
-fn the_test() {
+fn test_impl() {
     std::thread::scope(|scope| {
         let db_t1 = Knobs::default();
 
@@ -80,4 +79,15 @@ fn the_test() {
             assert_eq!(r, MAX);
         });
     });
+}
+
+#[test]
+fn normal_test() {
+    test_impl()
+}
+
+#[cfg(feature = "shuttle")]
+#[test]
+fn shuttle_test() {
+    shuttle::check_random(test_impl, 10000);
 }

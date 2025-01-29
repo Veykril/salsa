@@ -1,13 +1,12 @@
-use std::{
-    sync::atomic::{AtomicBool, Ordering},
-    thread::ThreadId,
-};
-
 use parking_lot::RwLock;
 
 use crate::{
     key::DatabaseKeyIndex,
     runtime::{BlockResult, WaitResult},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        thread::ThreadId,
+    },
     zalsa::{MemoIngredientIndex, Zalsa},
     zalsa_local::ZalsaLocal,
     Database,
@@ -46,7 +45,7 @@ impl SyncTable {
     ) -> ClaimResult<'me> {
         let mut syncs = self.syncs.write();
         let zalsa = db.zalsa();
-        let thread_id = std::thread::current().id();
+        let thread_id = crate::sync::thread::current().id();
 
         util::ensure_vec_len(&mut syncs, memo_ingredient_index.as_usize() + 1);
 
@@ -111,7 +110,7 @@ impl ClaimGuard<'_> {
 
 impl Drop for ClaimGuard<'_> {
     fn drop(&mut self) {
-        let wait_result = if std::thread::panicking() {
+        let wait_result = if crate::sync::thread::panicking() {
             WaitResult::Panicked
         } else {
             WaitResult::Completed
