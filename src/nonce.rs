@@ -24,7 +24,7 @@ impl<T> NonceGenerator<T> {
     pub(crate) fn nonce(&self) -> Nonce<T> {
         let value = self
             .value
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            .fetch_add(1, crate::sync::atomic::Ordering::Relaxed);
 
         assert!(value != 0, "nonce rolled over");
 

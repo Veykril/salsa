@@ -76,7 +76,7 @@ fn execute_cancellation() {
     let counts = (1..=10).collect::<Vec<u32>>();
     let input = ParallelInput::new(&db, counts);
 
-    let thread_a = std::thread::spawn({
+    let thread_a = salsa::sync::thread::spawn({
         let db = db.clone();
         move || a1(&db, input)
     });

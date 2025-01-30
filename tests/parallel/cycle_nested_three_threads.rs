@@ -70,7 +70,7 @@ fn initial(_db: &dyn KnobsDatabase) -> CycleValue {
 }
 
 fn test_impl() {
-    std::thread::scope(|scope| {
+    salsa::sync::thread::scope(|scope| {
         let db_t1 = Knobs::default();
         let db_t2 = db_t1.clone();
         let db_t3 = db_t1.clone();

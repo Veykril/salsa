@@ -1,7 +1,3 @@
-//! Test for cycle recover spread across two threads.
-//! See `../cycles.rs` for a complete listing of cycle tests,
-//! both intra and cross thread.
-
 use salsa::Cancelled;
 use salsa::Setter;
 
@@ -46,7 +42,7 @@ fn execute() {
 
     let input = MyInput::new(&db, 1);
 
-    let thread_a = std::thread::spawn({
+    let thread_a = salsa::sync::thread::spawn({
         let db = db.clone();
         move || a1(&db, input)
     });
