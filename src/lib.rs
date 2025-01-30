@@ -1,3 +1,7 @@
+#[cfg(feature = "shuttle")]
+#[macro_use(thread_local)]
+extern crate shuttle;
+
 mod accumulator;
 mod active_query;
 mod array;

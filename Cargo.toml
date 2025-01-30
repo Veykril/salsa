@@ -39,6 +39,7 @@ trybuild = "1.0"
 
 [features]
 shuttle = ["dep:shuttle"]
+default = ["shuttle"]
 
 [[bench]]
 name = "compare"

@@ -1,6 +1,6 @@
 use std::mem;
 
-use parking_lot::Mutex;
+use crate::sync::Mutex;
 
 use crate::{
     durability::Durability,
@@ -173,7 +173,7 @@ impl Runtime {
         other_id: ThreadId,
         query_mutex_guard: QueryMutexGuard,
     ) -> BlockResult {
-        let mut dg = self.dependency_graph.lock();
+        let mut dg = self.dependency_graph.lock().unwrap();
         let thread_id = crate::sync::thread::current().id();
 
         if dg.depends_on(other_id, thread_id) {
@@ -222,6 +222,7 @@ impl Runtime {
     ) {
         self.dependency_graph
             .lock()
+            .unwrap()
             .unblock_runtimes_blocked_on(database_key, wait_result);
     }
 }

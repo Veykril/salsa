@@ -1,5 +1,5 @@
+use crate::sync::Mutex;
 use crossbeam::atomic::AtomicCell;
-use parking_lot::Mutex;
 
 use crate::{id::FromId, Id};
 
@@ -19,7 +19,7 @@ pub struct Singleton {
 impl sealed::Sealed for Singleton {}
 impl SingletonChoice for Singleton {
     fn with_lock(&self, cb: impl FnOnce() -> Id) -> Id {
-        let _guard = self.lock.lock();
+        let _guard = self.lock.lock().unwrap();
         if self.index.load().is_some() {
             panic!("singleton struct may not be duplicated");
         }

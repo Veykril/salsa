@@ -7,9 +7,9 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
+use crate::sync::Mutex;
 use append_only_vec::AppendOnlyVec;
 use memo::MemoTable;
-use parking_lot::Mutex;
 use sync::SyncTable;
 
 use crate::{zalsa::transmute_data_ptr, Id, IngredientIndex, Revision};
@@ -230,7 +230,7 @@ impl<T: Slot> Page<T> {
     where
         V: FnOnce(Id) -> T,
     {
-        let guard = self.allocation_lock.lock();
+        let guard = self.allocation_lock.lock().unwrap();
         let index = self.allocated.load(Ordering::Acquire);
         if index == PAGE_LEN {
             return Err(value);

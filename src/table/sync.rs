@@ -1,4 +1,4 @@
-use parking_lot::RwLock;
+use crate::sync::RwLock;
 
 use crate::{
     key::DatabaseKeyIndex,
@@ -43,7 +43,7 @@ impl SyncTable {
         database_key_index: DatabaseKeyIndex,
         memo_ingredient_index: MemoIngredientIndex,
     ) -> ClaimResult<'me> {
-        let mut syncs = self.syncs.write();
+        let mut syncs = self.syncs.write().unwrap();
         let zalsa = db.zalsa();
         let thread_id = crate::sync::thread::current().id();
 
@@ -94,7 +94,7 @@ pub(crate) struct ClaimGuard<'me> {
 
 impl ClaimGuard<'_> {
     fn remove_from_map_and_unblock_queries(&self, wait_result: WaitResult) {
-        let mut syncs = self.sync_table.syncs.write();
+        let mut syncs = self.sync_table.syncs.write().unwrap();
 
         let SyncState { anyone_waiting, .. } =
             syncs[self.memo_ingredient_index.as_usize()].take().unwrap();

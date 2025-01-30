@@ -70,29 +70,29 @@ fn initial(_db: &dyn KnobsDatabase) -> CycleValue {
 }
 
 fn test_impl() {
-    salsa::sync::thread::scope(|scope| {
-        let db_t1 = Knobs::default();
-        let db_t2 = db_t1.clone();
-        let db_t3 = db_t1.clone();
+    // salsa::sync::thread::scope(|scope| {
+    let db_t1 = Knobs::default();
+    let db_t2 = db_t1.clone();
+    let db_t3 = db_t1.clone();
 
-        // Thread 1:
-        scope.spawn(move || {
-            let r = query_a(&db_t1);
-            assert_eq!(r, MAX);
-        });
-
-        // Thread 2:
-        scope.spawn(move || {
-            let r = query_b(&db_t2);
-            assert_eq!(r, MAX);
-        });
-
-        // Thread 3:
-        scope.spawn(move || {
-            let r = query_c(&db_t3);
-            assert_eq!(r, MAX);
-        });
+    // Thread 1:
+    salsa::sync::thread::spawn(move || {
+        let r = query_a(&db_t1);
+        assert_eq!(r, MAX);
     });
+
+    // Thread 2:
+    salsa::sync::thread::spawn(move || {
+        let r = query_b(&db_t2);
+        assert_eq!(r, MAX);
+    });
+
+    // Thread 3:
+    salsa::sync::thread::spawn(move || {
+        let r = query_c(&db_t3);
+        assert_eq!(r, MAX);
+    });
+    // });
 }
 
 #[test]
