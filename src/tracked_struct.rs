@@ -744,7 +744,7 @@ where
         let zalsa = db.zalsa();
         let data = Self::data(zalsa.table(), input);
 
-        VerifyResult::changed_if(data.created_at > revision)
+        VerifyResult::changed_after(data.created_at, revision)
     }
 
     fn is_provisional_cycle_head<'db>(&'db self, _db: &'db dyn Database, _input: Id) -> bool {

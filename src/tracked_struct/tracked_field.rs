@@ -56,7 +56,7 @@ where
         let zalsa = db.zalsa();
         let data = <super::IngredientImpl<C>>::data(zalsa.table(), input);
         let field_changed_at = data.revisions[self.field_index];
-        VerifyResult::changed_if(field_changed_at > revision)
+        VerifyResult::changed_after(field_changed_at, revision)
     }
 
     fn is_provisional_cycle_head<'db>(&'db self, _db: &'db dyn Database, _input: Id) -> bool {

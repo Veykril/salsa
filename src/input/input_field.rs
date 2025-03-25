@@ -53,7 +53,7 @@ where
     ) -> VerifyResult {
         let zalsa = db.zalsa();
         let value = <IngredientImpl<C>>::data(zalsa, input);
-        VerifyResult::changed_if(value.stamps[self.field_index].changed_at > revision)
+        VerifyResult::changed_after(value.stamps[self.field_index].changed_at, revision)
     }
 
     fn is_provisional_cycle_head<'db>(&'db self, _db: &'db dyn Database, _input: Id) -> bool {

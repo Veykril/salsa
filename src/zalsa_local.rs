@@ -281,8 +281,8 @@ impl std::panic::RefUnwindSafe for ZalsaLocal {}
 
 /// Summarizes "all the inputs that a query used"
 /// and "all the outputs it has written to"
+// FIXME: Give this a better name
 #[derive(Debug)]
-// #[derive(Clone)] cloning this is expensive, so we don't derive
 pub(crate) struct QueryRevisions {
     /// The most revision in which some input changed.
     pub(crate) changed_at: Revision,
@@ -392,6 +392,10 @@ pub enum QueryOrigin {
     /// (but we know there were more).
     DerivedUntracked(QueryEdges),
 
+    /// The value was derived by executing a function
+    /// but that function only read from immutable inputs.
+    DerivedImmutable,
+
     /// The value is an initial provisional value for a query that supports fixpoint iteration.
     FixpointInitial,
 }
@@ -401,7 +405,9 @@ impl QueryOrigin {
     pub(crate) fn inputs(&self) -> impl DoubleEndedIterator<Item = DatabaseKeyIndex> + '_ {
         let opt_edges = match self {
             QueryOrigin::Derived(edges) | QueryOrigin::DerivedUntracked(edges) => Some(edges),
-            QueryOrigin::Assigned(_) | QueryOrigin::FixpointInitial => None,
+            QueryOrigin::Assigned(_)
+            | QueryOrigin::FixpointInitial
+            | QueryOrigin::DerivedImmutable => None,
         };
         opt_edges.into_iter().flat_map(|edges| edges.inputs())
     }
@@ -410,7 +416,9 @@ impl QueryOrigin {
     pub(crate) fn outputs(&self) -> impl DoubleEndedIterator<Item = DatabaseKeyIndex> + '_ {
         let opt_edges = match self {
             QueryOrigin::Derived(edges) | QueryOrigin::DerivedUntracked(edges) => Some(edges),
-            QueryOrigin::Assigned(_) | QueryOrigin::FixpointInitial => None,
+            QueryOrigin::Assigned(_)
+            | QueryOrigin::FixpointInitial
+            | QueryOrigin::DerivedImmutable => None,
         };
         opt_edges.into_iter().flat_map(|edges| edges.outputs())
     }

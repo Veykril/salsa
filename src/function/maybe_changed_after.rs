@@ -27,8 +27,8 @@ pub enum VerifyResult {
 }
 
 impl VerifyResult {
-    pub(crate) fn changed_if(changed: bool) -> Self {
-        if changed {
+    pub(crate) fn changed_after(revision: Revision, after: Revision) -> Self {
+        if revision > after {
             Self::Changed
         } else {
             Self::unchanged()
@@ -289,6 +289,8 @@ where
         }
 
         match &old_memo.revisions.origin {
+            // Shouldn't end up here, shallow verify ought to always pass
+            QueryOrigin::DerivedImmutable => VerifyResult::unchanged(),
             QueryOrigin::Assigned(_) => {
                 // If the value was assigned by another query,
                 // and that query were up-to-date,

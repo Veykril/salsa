@@ -162,17 +162,25 @@ impl ActiveQuery {
             ref mut cycle_heads,
         } = self;
 
-        let edges = QueryEdges::new(input_outputs.drain(..));
-        let origin = if untracked_read {
-            QueryOrigin::DerivedUntracked(edges)
-        } else {
-            QueryOrigin::Derived(edges)
-        };
-        disambiguator_map.clear();
         let accumulated = accumulated
             .is_empty()
             .not()
             .then(|| Box::new(mem::take(accumulated)));
+        let origin = if durability == Durability::IMMUTABLE
+            && !(accumulated_inputs.is_any() || accumulated.is_some())
+        {
+            // We only depend on immutable inputs, we can discard our dependencies
+            // as we will never be invalidated again
+            input_outputs.clear();
+            QueryOrigin::DerivedImmutable
+        } else {
+            let edges = QueryEdges::new(input_outputs.drain(..));
+            match untracked_read {
+                true => QueryOrigin::DerivedUntracked(edges),
+                false => QueryOrigin::Derived(edges),
+            }
+        };
+        disambiguator_map.clear();
         let tracked_struct_ids = mem::take(tracked_struct_ids);
         let accumulated_inputs = AtomicInputAccumulatedValues::new(accumulated_inputs);
         let cycle_heads = mem::take(cycle_heads);

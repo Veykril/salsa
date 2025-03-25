@@ -123,6 +123,10 @@ impl<C: Configuration> IngredientImpl<C> {
     /// * `field_index`, index of the field that will be changed
     /// * `durability`, durability of the new value. If omitted, uses the durability of the previous value.
     /// * `setter`, function that modifies the fields tuple; should only modify the element for `field_index`
+    ///
+    /// # Panics
+    ///
+    /// Panics if `durability` is [`Durability::IMMUTABLE`].
     pub fn set_field<R>(
         &mut self,
         runtime: &mut Runtime,
@@ -139,10 +143,7 @@ impl<C: Configuration> IngredientImpl<C> {
         let r = unsafe { &mut *r };
 
         let stamp = &mut r.stamps[field_index];
-
-        if stamp.durability != Durability::MIN {
-            runtime.report_tracked_write(stamp.durability);
-        }
+        runtime.report_tracked_write(stamp.durability);
 
         stamp.durability = durability.unwrap_or(stamp.durability);
         stamp.changed_at = runtime.current_revision();

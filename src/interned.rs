@@ -284,11 +284,11 @@ where
                 let table = zalsa.table();
 
                 // Record the durability of the current query on the interned value.
-                let durability = zalsa_local
+                let (deps_changed_at, durability) = zalsa_local
                     .active_query()
-                    .map(|(_, stamp)| stamp.durability)
+                    .map(|(_, stamp)| (stamp.changed_at, stamp.durability))
                     // If there is no active query this durability does not actually matter.
-                    .unwrap_or(Durability::MAX);
+                    .unwrap_or((current_revision, Durability::IMMUTABLE));
 
                 let id = zalsa_local.allocate(table, self.ingredient_index, |id| Value::<C> {
                     fields: unsafe { self.to_internal_data(assemble(id, key)) },
@@ -296,8 +296,8 @@ where
                     syncs: Default::default(),
                     durability: AtomicU8::new(durability.as_u8()),
                     // Record the revision we are interning in.
-                    first_interned_at: current_revision,
-                    last_interned_at: AtomicRevision::from(current_revision),
+                    first_interned_at: deps_changed_at,
+                    last_interned_at: AtomicRevision::from(deps_changed_at),
                 });
 
                 let value = table.get::<Value<C>>(id);

@@ -104,7 +104,7 @@ impl<C: Configuration> IngredientImpl<C> {
                     // or those with untracked inputs
                     // as their values cannot be reconstructed.
                 }
-                QueryOrigin::Derived(_) => {
+                QueryOrigin::Derived(_) | QueryOrigin::DerivedImmutable => {
                     // Set the memo value to `None`.
                     memo.value = None;
                 }
