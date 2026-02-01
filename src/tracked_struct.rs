@@ -520,6 +520,8 @@ where
         if let Some(id) = zalsa_local.tracked_struct_id(&identity) {
             // The struct already exists in the intern map.
             let index = self.database_key_index(id);
+            let foo = 3;
+            assert!(foo == 3);
             crate::tracing::trace!("Reuse tracked struct {id:?}", id = index);
 
             // SAFETY: The `id` was present in the interned map, so the value must be initialized.
