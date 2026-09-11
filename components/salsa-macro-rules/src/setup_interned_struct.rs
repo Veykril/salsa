@@ -139,9 +139,7 @@ macro_rules! setup_interned_struct {
                 $($field_ty: $zalsa::HashEqLike<$indexed_ty>),*
                 {
 
-                fn hash<H: ::std::hash::Hasher>(&self, h: &mut H) {
-                    $($zalsa::HashEqLike::<$indexed_ty>::hash(&self.$field_index, &mut *h);)*
-                }
+
 
                 fn eq(&self, data: &StructKey<$db_lt, $($indexed_ty),*>) -> bool {
                     ($($zalsa::HashEqLike::<$indexed_ty>::eq(&self.$field_index, &data.$field_index) && )* true)
