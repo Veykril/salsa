@@ -399,44 +399,29 @@ where
 
     /// Intern data to a unique reference.
     ///
-    /// If `key` is already interned, returns the existing [`Id`] for the interned data without
-    /// invoking `assemble`.
-    ///
-    /// Otherwise, invokes `assemble` with the given `key` and the [`Id`] to be allocated for this
-    /// interned value. The resulting [`C::Data`] will then be interned.
-    ///
-    /// Note: Using the database within the `assemble` function may result in a deadlock if
-    /// the database ends up trying to intern or allocate a new value.
+    /// If `key` is already interned, returns the existing [`Id`] for the interned data.
     pub fn intern<'db, Key>(
         &'db self,
         zalsa: &'db Zalsa,
         zalsa_local: &'db ZalsaLocal,
         key: Key,
-        assemble: impl FnOnce(Id, Key) -> C::Fields<'db>,
     ) -> C::Struct<'db>
     where
         Key: Hash,
         C::Fields<'db>: HashEqLike<Key>,
+        Key: Lookup<C::Fields<'db>>,
     {
-        FromId::from_id(self.intern_id(zalsa, zalsa_local, key, assemble))
+        FromId::from_id(self.intern_id(zalsa, zalsa_local, key))
     }
 
     /// Intern data to a unique reference.
     ///
-    /// If `key` is already interned, returns the existing [`Id`] for the interned data without
-    /// invoking `assemble`.
-    ///
-    /// Otherwise, invokes `assemble` with the given `key` and the [`Id`] to be allocated for this
-    /// interned value. The resulting [`C::Data`] will then be interned.
-    ///
-    /// Note: Using the database within the `assemble` function may result in a deadlock if
-    /// the database ends up trying to intern or allocate a new value.
+    /// If `key` is already interned, returns the existing [`Id`] for the interned data.
     pub fn intern_id<'db, Key>(
         &'db self,
         zalsa: &'db Zalsa,
         zalsa_local: &'db ZalsaLocal,
         key: Key,
-        assemble: impl FnOnce(Id, Key) -> C::Fields<'db>,
     ) -> crate::Id
     where
         Key: Hash,
@@ -445,6 +430,7 @@ where
         // for<'db> C::Data<'db>: HashEqLike<Key>,
         // so instead we go with this and transmute the lifetime in the `eq` closure
         C::Fields<'db>: HashEqLike<Key>,
+        Key: Lookup<C::Fields<'db>>,
     {
         // Record the current revision as active.
         let current_revision = zalsa.current_revision();
@@ -528,15 +514,7 @@ where
 
         // Fill up the table for the first few revisions without attempting garbage collection.
         if !self.revision_queue.is_primed() {
-            return self.intern_id_cold(
-                key,
-                zalsa,
-                zalsa_local,
-                assemble,
-                shard,
-                shard_index,
-                hash,
-            );
+            return self.intern_id_cold(key, zalsa, zalsa_local, shard, shard_index, hash);
         }
 
         // Otherwise, try to reuse a stale slot.
@@ -545,15 +523,7 @@ where
         let Some((slot, value)) = (unsafe { self.find_reusable_slot(current_revision, shard) })
         else {
             // If we could not find a stale slot, we are forced to allocate a new one.
-            return self.intern_id_cold(
-                key,
-                zalsa,
-                zalsa_local,
-                assemble,
-                shard,
-                shard_index,
-                hash,
-            );
+            return self.intern_id_cold(key, zalsa, zalsa_local, shard, shard_index, hash);
         };
 
         // Record the durability of the current query on the interned value.
@@ -567,7 +537,7 @@ where
         // Assemble and hash the replacement before mutating the existing slot. Both operations
         // can invoke user code and panic.
         // SAFETY: We call `from_internal_data` to restore the correct lifetime before access.
-        let new_fields = unsafe { self.to_internal_data(assemble(slot.new_id, key)) };
+        let new_fields = unsafe { self.to_internal_data(key.into_owned()) };
 
         // SAFETY: We hold the lock for the shard containing the value.
         let old_hash = self.hasher.hash_one(unsafe { &*value.fields.get() });
@@ -663,7 +633,6 @@ where
         key: Key,
         zalsa: &Zalsa,
         zalsa_local: &ZalsaLocal,
-        assemble: impl FnOnce(Id, Key) -> C::Fields<'db>,
         shard: &mut IngredientShard,
         shard_index: usize,
         hash: u64,
@@ -671,6 +640,7 @@ where
     where
         Key: Hash,
         C::Fields<'db>: HashEqLike<Key>,
+        Key: Lookup<C::Fields<'db>>,
     {
         let current_revision = zalsa.current_revision();
 
@@ -693,7 +663,7 @@ where
                 }),
             },
             // SAFETY: We call `from_internal_data` to restore the correct lifetime before access.
-            fields: UnsafeCell::new(unsafe { self.to_internal_data(assemble(id, key)) }),
+            fields: UnsafeCell::new(unsafe { self.to_internal_data(key.into_owned()) }),
             // SAFETY: We only ever access the memos of a value that we allocated through
             // our `MemoTableTypes`.
             memos: UnsafeCell::new(unsafe { MemoTable::new(self.memo_table_types()) }),
